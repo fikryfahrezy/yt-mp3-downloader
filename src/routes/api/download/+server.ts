@@ -18,30 +18,30 @@ export const GET = (async ({ url }) => {
 		throw error(400, `max content length is ${maxContentLength}`);
 	}
 
-	const stream = new ReadableStream({
-		start(controller) {
+	const videoBuffer: Buffer = await (async () => {
+		return new Promise((resolve, reject) => {
+			const videoChunk: Buffer[] = [];
+
 			ytdl(ytUrl, {
 				format
 			})
-				.on('data', (chunk) => {
-					controller.enqueue(chunk);
-				})
-				.on('close', () => {
-					controller.close();
-				})
-				.on('end', () => {
-					controller.close();
-				})
-				.on('error', (err) => {
-					controller.error(err);
-				});
-		}
-	});
+			.on('data', (chunk) => {
+				videoChunk.push(chunk);
+			})
+			.on('end', () => {
+				resolve(Buffer.concat(videoChunk))
+			})
+			.on('error', (err) => {
+				reject(err)
+			});
+		})
+	})()
 
-	return new Response(stream, {
+
+	return new Response(videoBuffer, {
 		headers: {
 			'Content-Type': 'audio/mpeg',
-			'Content-Disposition': `attachment; filename=${ytTitle}.mp3`,
+			'Content-Disposition': `filename=${ytTitle}.mp3`,
 			'Content-Length': contentLength
 		}
 	});
